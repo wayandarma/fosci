@@ -25,6 +25,7 @@ export interface Post {
   publishedAt?: string
   categories?: Category[]
   author?: Author
+  featured?: boolean
 }
 
 export interface GlossaryTerm {

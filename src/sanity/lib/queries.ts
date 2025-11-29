@@ -31,6 +31,18 @@ export const postBySlugQuery = groq`
   }
 `
 
+export const featuredPostsQuery = groq`
+  *[_type == "post" && featured == true] | order(publishedAt desc) [0...4] {
+    _id,
+    title,
+    slug,
+    mainImage,
+    excerpt,
+    publishedAt,
+    "categories": categories[]->{ _id, title, "slug": slug.current }
+  }
+`
+
 export const getPostsCountQuery = groq`
   count(*[_type == "post" && 
     ($categorySlug == null || $categorySlug in categories[]->slug.current) &&

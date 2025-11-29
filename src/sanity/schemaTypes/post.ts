@@ -12,6 +12,13 @@ export default defineType({
       validation: (Rule) => Rule.required(),
     }),
     defineField({
+      name: 'featured',
+      title: 'Featured',
+      type: 'boolean',
+      initialValue: false,
+      description: 'Toggle to feature this post on the homepage',
+    }),
+    defineField({
       name: 'slug',
       title: 'Slug',
       type: 'slug',
