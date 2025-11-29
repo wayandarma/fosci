@@ -1,53 +1,54 @@
 import Link from 'next/link'
-import { ArrowLeft } from 'lucide-react'
+import Image from 'next/image'
+import { notFound } from 'next/navigation'
+import { ArrowLeft, Calendar } from 'lucide-react'
+import { PortableText } from '@portabletext/react'
 import { Badge } from '@/components/ui/badge'
 import { Separator } from '@/components/ui/separator'
 import { ScientificVerdict } from '@/components/journal/ScientificVerdict'
+import { ArticleCard } from '@/components/journal/ArticleCard'
+import { client } from '@/sanity/lib/client'
+import { urlFor } from '@/sanity/lib/image'
+import { postBySlugQuery, getPostsQuery } from '@/sanity/lib/queries'
+import { Post } from '@/types/sanity'
 
 interface ArticlePageProps {
   params: Promise<{ slug: string }>
 }
 
-const dummyArticle = {
-  title: 'The Truth About Superfoods: Marketing vs. Science',
-  excerpt: 'Are superfoods really super? We dive into the research behind quinoa, acai, and other trendy ingredients.',
-  slug: 'truth-about-superfoods',
-  category: 'Myth Busting',
-  publishedAt: 'November 20, 2024',
-  author: {
-    name: 'Dr. Sarah Chen',
-    bio: 'Food Scientist & Nutritional Researcher',
-  },
-  verdict: 'While many so-called "superfoods" do contain beneficial nutrients, the term itself is primarily a marketing construct. A balanced diet with a variety of whole foods is more important than focusing on any single "miracle" ingredient.',
-  verdictType: 'complex' as const,
-  content: `
-    <p>The term "superfood" has become ubiquitous in health food marketing, but what does it actually mean from a scientific perspective? The short answer: not much.</p>
-    
-    <h2>The Origin of Superfoods</h2>
-    <p>The concept of superfoods emerged in the early 20th century, primarily as a marketing tool. Unlike terms such as "organic" or "natural," there is no official definition or regulatory standard for what constitutes a superfood.</p>
-    
-    <h2>The Science Behind the Claims</h2>
-    <p>Many foods labeled as superfoods do contain high concentrations of certain nutrients. Blueberries, for example, are rich in antioxidants. Salmon provides omega-3 fatty acids. Kale offers vitamins K, A, and C.</p>
-    
-    <p>However, the leap from "contains nutrients" to "super" is where marketing takes over from science. Most nutritional studies showing dramatic health benefits are conducted using concentrated extracts at doses far exceeding what you'd get from normal food consumption.</p>
-    
-    <h2>The Balanced Approach</h2>
-    <p>Rather than focusing on individual superfoods, nutritional science consistently supports a varied diet rich in fruits, vegetables, whole grains, and lean proteins. No single food can provide all the nutrients your body needs.</p>
-  `,
-}
+export const revalidate = 60 // Revalidate every minute
 
 export default async function ArticlePage({ params }: ArticlePageProps) {
   const { slug } = await params
-  
-  // In production, fetch article by slug from Sanity
-  console.log('Loading article:', slug)
-  const article = dummyArticle
+
+  const post = await client.fetch<Post>(postBySlugQuery, { slug })
+
+  if (!post) {
+    notFound()
+  }
+
+  // Fetch related articles (same category, excluding current)
+  // We use the first category to find related posts
+  const categorySlug = post.categories?.[0]?.slug?.current
+  const relatedPosts = categorySlug
+    ? await client.fetch<Post[]>(getPostsQuery, {
+      categorySlug,
+      start: 0,
+      end: 2, // Fetch 2 related articles
+      keyword: null
+    })
+    : []
+
+  // Filter out the current post from related posts if it appears
+  const filteredRelatedPosts = relatedPosts
+    .filter(p => p._id !== post._id)
+    .slice(0, 2)
 
   return (
     <article className="container mx-auto px-4 py-12 md:px-6 md:py-16">
       {/* Back Link */}
-      <Link 
-        href="/journal" 
+      <Link
+        href="/journal"
         className="mb-8 inline-flex items-center gap-2 text-sm text-muted-foreground transition-colors hover:text-primary"
       >
         <ArrowLeft className="size-4" />
@@ -56,75 +57,115 @@ export default async function ArticlePage({ params }: ArticlePageProps) {
 
       {/* Article Header */}
       <header className="mx-auto max-w-3xl">
-        <Badge variant="secondary" className="mb-4">
-          {article.category}
-        </Badge>
-        
+        {post.categories?.[0] && (
+          <Badge variant="secondary" className="mb-4">
+            {post.categories[0].title}
+          </Badge>
+        )}
+
         <h1 className="text-3xl font-bold leading-tight md:text-4xl lg:text-5xl">
-          {article.title}
+          {post.title}
         </h1>
-        
-        <p className="mt-4 text-lg text-muted-foreground md:text-xl">
-          {article.excerpt}
-        </p>
+
+        {post.excerpt && (
+          <p className="mt-4 text-lg text-muted-foreground md:text-xl">
+            {post.excerpt}
+          </p>
+        )}
 
         {/* Author & Date */}
         <div className="mt-8 flex items-center gap-4">
-          <div className="size-12 rounded-full bg-gradient-to-br from-primary/20 to-accent/20" />
+          {post.author?.image ? (
+            <div className="relative size-12 overflow-hidden rounded-full">
+              <Image
+                src={urlFor(post.author.image).url()}
+                alt={post.author.name}
+                fill
+                className="object-cover"
+              />
+            </div>
+          ) : (
+            <div className="size-12 rounded-full bg-gradient-to-br from-primary/20 to-accent/20" />
+          )}
           <div>
-            <p className="font-medium">{article.author.name}</p>
-            <p className="text-sm text-muted-foreground">{article.author.bio}</p>
+            <p className="font-medium">{post.author?.name || 'FoodSci Team'}</p>
+            {post.author?.bio && (
+              <p className="text-sm text-muted-foreground">{post.author.bio}</p>
+            )}
           </div>
         </div>
-        
-        <time className="mt-4 block text-sm text-muted-foreground">
-          {article.publishedAt}
-        </time>
+
+        {post.publishedAt && (
+          <time className="mt-4 flex items-center gap-2 text-sm text-muted-foreground">
+            <Calendar className="size-4" />
+            {new Date(post.publishedAt).toLocaleDateString('en-US', {
+              month: 'long',
+              day: 'numeric',
+              year: 'numeric',
+            })}
+          </time>
+        )}
       </header>
 
-      {/* Main Image Placeholder */}
-      <div className="mx-auto mt-10 max-w-4xl">
-        <div className="aspect-[21/9] w-full rounded-xl bg-gradient-to-br from-primary/10 via-secondary to-accent/10" />
-      </div>
+      {/* Main Image */}
+      {post.mainImage && (
+        <div className="mx-auto mt-10 max-w-4xl">
+          <div className="relative aspect-[21/9] w-full overflow-hidden rounded-xl bg-muted">
+            <Image
+              src={urlFor(post.mainImage).url()}
+              alt={post.title}
+              fill
+              className="object-cover"
+              priority
+            />
+          </div>
+        </div>
+      )}
 
       <Separator className="mx-auto my-12 max-w-3xl" />
 
       {/* Article Content */}
-      <div className="prose prose-lg mx-auto max-w-3xl">
-        <div 
-          className="space-y-6 text-lg leading-relaxed [&>h2]:mt-10 [&>h2]:text-2xl [&>h2]:font-bold [&>p]:text-foreground/90"
-          dangerouslySetInnerHTML={{ __html: article.content }}
-        />
-        
+      <div className="prose prose-lg mx-auto max-w-3xl dark:prose-invert">
+        {post.body ? (
+          <PortableText
+            value={post.body}
+            components={{
+              block: {
+                h2: ({ children }) => <h2 className="mt-10 text-2xl font-bold">{children}</h2>,
+                h3: ({ children }) => <h3 className="mt-8 text-xl font-bold">{children}</h3>,
+                normal: ({ children }) => <p className="leading-relaxed text-foreground/90">{children}</p>,
+                blockquote: ({ children }) => <blockquote className="border-l-4 border-primary pl-4 italic">{children}</blockquote>,
+              },
+              list: {
+                bullet: ({ children }) => <ul className="list-disc pl-6">{children}</ul>,
+                number: ({ children }) => <ol className="list-decimal pl-6">{children}</ol>,
+              }
+            }}
+          />
+        ) : (
+          <p className="italic text-muted-foreground">No content available.</p>
+        )}
+
         {/* Scientific Verdict */}
-        <ScientificVerdict 
-          verdict={article.verdict} 
-          type={article.verdictType} 
-        />
+        {post.scientificVerdict && (
+          <ScientificVerdict
+            verdict={post.scientificVerdict}
+            type="complex" // Defaulting to complex as we don't have this field in schema yet
+          />
+        )}
       </div>
 
-      {/* Related Articles Placeholder */}
-      <section className="mx-auto mt-20 max-w-3xl">
-        <h2 className="mb-8 text-2xl font-bold">Related Articles</h2>
-        <div className="grid gap-6 sm:grid-cols-2">
-          {[1, 2].map((i) => (
-            <div 
-              key={i}
-              className="rounded-lg border border-border bg-card p-6 transition-shadow hover:shadow-md"
-            >
-              <Badge variant="secondary" className="mb-3 text-xs">
-                Nutrition
-              </Badge>
-              <h3 className="font-semibold transition-colors hover:text-primary">
-                Understanding Antioxidants: Beyond the Buzzword
-              </h3>
-              <p className="mt-2 text-sm text-muted-foreground">
-                What antioxidants actually do and why balance matters.
-              </p>
-            </div>
-          ))}
-        </div>
-      </section>
+      {/* Related Articles */}
+      {filteredRelatedPosts.length > 0 && (
+        <section className="mx-auto mt-20 max-w-4xl border-t pt-12">
+          <h2 className="mb-8 text-2xl font-bold">Related Articles</h2>
+          <div className="grid gap-8 sm:grid-cols-2">
+            {filteredRelatedPosts.map((relatedPost) => (
+              <ArticleCard key={relatedPost._id} post={relatedPost} />
+            ))}
+          </div>
+        </section>
+      )}
     </article>
   )
 }

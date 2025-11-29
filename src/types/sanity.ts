@@ -4,6 +4,7 @@ export interface Category {
   _id: string
   title: string
   description?: string
+  slug?: { current: string }
 }
 
 export interface Author {

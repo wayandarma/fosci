@@ -1,6 +1,21 @@
-import { GlossaryList } from '@/components/glossary/GlossaryList'
+import { GlossaryManager } from '@/components/glossary/GlossaryManager'
+import { client } from '@/sanity/lib/client'
+import { glossaryQuery } from '@/sanity/lib/queries'
+import { GlossaryTerm } from '@/types/sanity'
 
-export default function GlossaryPage() {
+export const revalidate = 3600 // Revalidate every hour
+
+export default async function GlossaryPage() {
+  let terms: GlossaryTerm[] = []
+  let error = null
+
+  try {
+    terms = await client.fetch(glossaryQuery)
+  } catch (e) {
+    console.error('Failed to fetch glossary terms:', e)
+    error = 'Failed to load glossary terms. Please check your connection or try again later.'
+  }
+
   return (
     <div className="container mx-auto px-4 py-16 md:px-6 md:py-24">
       {/* Header */}
@@ -13,7 +28,13 @@ export default function GlossaryPage() {
 
       {/* Glossary Content */}
       <div className="mx-auto max-w-3xl">
-        <GlossaryList />
+        {error ? (
+          <div className="rounded-lg border border-destructive/50 bg-destructive/10 p-4 text-center text-destructive">
+            {error}
+          </div>
+        ) : (
+          <GlossaryManager terms={terms} />
+        )}
       </div>
     </div>
   )

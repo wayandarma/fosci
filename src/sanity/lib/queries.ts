@@ -1,15 +1,18 @@
 import { groq } from 'next-sanity'
 
 // Posts queries
-export const postsQuery = groq`
-  *[_type == "post"] | order(publishedAt desc) {
+export const getPostsQuery = groq`
+  *[_type == "post" && 
+    ($categorySlug == null || $categorySlug in categories[]->slug.current) &&
+    ($keyword == null || title match $keyword + "*" || excerpt match $keyword + "*")
+  ] | order(publishedAt desc) [$start...$end] {
     _id,
     title,
     slug,
     mainImage,
     excerpt,
     publishedAt,
-    "categories": categories[]->{ _id, title }
+    "categories": categories[]->{ _id, title, "slug": slug.current }
   }
 `
 
@@ -23,21 +26,16 @@ export const postBySlugQuery = groq`
     body,
     scientificVerdict,
     publishedAt,
-    "categories": categories[]->{ _id, title },
+    "categories": categories[]->{ _id, title, "slug": slug.current },
     "author": author->{ name, image, bio }
   }
 `
 
-export const postsByCategoryQuery = groq`
-  *[_type == "post" && $categoryId in categories[]._ref] | order(publishedAt desc) {
-    _id,
-    title,
-    slug,
-    mainImage,
-    excerpt,
-    publishedAt,
-    "categories": categories[]->{ _id, title }
-  }
+export const getPostsCountQuery = groq`
+  count(*[_type == "post" && 
+    ($categorySlug == null || $categorySlug in categories[]->slug.current) &&
+    ($keyword == null || title match $keyword + "*" || excerpt match $keyword + "*")
+  ])
 `
 
 // Categories queries
@@ -45,7 +43,8 @@ export const categoriesQuery = groq`
   *[_type == "category"] | order(title asc) {
     _id,
     title,
-    description
+    description,
+    slug
   }
 `
 

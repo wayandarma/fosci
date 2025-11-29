@@ -1,6 +1,6 @@
 # FoodSci Authority Hub - Project Progress
 
-> Last Updated: November 27, 2024
+> Last Updated: November 27, 2025
 
 ## Project Overview
 FoodSci is an educational website (Authority Hub) focusing on food science, debunking myths, and nutritional facts. The goal is to establish the client (I Kadek Adi Indrawan) as a Subject Matter Expert (SME) in Food Science.

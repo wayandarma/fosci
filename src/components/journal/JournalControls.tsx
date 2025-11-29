@@ -5,15 +5,13 @@ import { useSearchParams, usePathname, useRouter } from 'next/navigation'
 import { Search } from 'lucide-react'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
+import { Category } from '@/types/sanity'
 
-const categories = [
-  { id: 'all', label: 'All', slug: '' },
-  { id: 'myth-busting', label: 'Myth Busting', slug: 'myth-busting' },
-  { id: 'ingredients', label: 'Ingredients', slug: 'ingredients' },
-  { id: 'nutrition', label: 'Nutrition', slug: 'nutrition' },
-]
+interface JournalControlsProps {
+  categories: Category[]
+}
 
-export function JournalControls() {
+export function JournalControls({ categories }: JournalControlsProps) {
   const searchParams = useSearchParams()
   const pathname = usePathname()
   const router = useRouter()
@@ -32,7 +30,7 @@ export function JournalControls() {
   const createQueryString = useCallback(
     (params: Record<string, string | null>) => {
       const newSearchParams = new URLSearchParams(searchParams.toString())
-      
+
       Object.entries(params).forEach(([key, value]) => {
         if (value === null || value === '') {
           newSearchParams.delete(key)
@@ -40,6 +38,9 @@ export function JournalControls() {
           newSearchParams.set(key, value)
         }
       })
+
+      // Reset page when filter changes
+      newSearchParams.delete('page')
 
       return newSearchParams.toString()
     },
@@ -80,19 +81,27 @@ export function JournalControls() {
 
       {/* Category Filters */}
       <div className="flex flex-wrap items-center gap-2">
-        {categories.map((category) => {
-          const isActive = category.slug === currentCategory || 
-            (category.slug === '' && !currentCategory)
-          
+        <Button
+          variant={!currentCategory ? 'default' : 'outline'}
+          size="sm"
+          onClick={() => handleCategoryChange('')}
+          className="rounded-full"
+        >
+          All
+        </Button>
+        {categories?.map((category) => {
+          const slug = category.slug?.current || category.title.toLowerCase().replace(/\s+/g, '-')
+          const isActive = slug === currentCategory
+
           return (
             <Button
-              key={category.id}
+              key={category._id}
               variant={isActive ? 'default' : 'outline'}
               size="sm"
-              onClick={() => handleCategoryChange(category.slug)}
+              onClick={() => handleCategoryChange(slug)}
               className="rounded-full"
             >
-              {category.label}
+              {category.title}
             </Button>
           )
         })}

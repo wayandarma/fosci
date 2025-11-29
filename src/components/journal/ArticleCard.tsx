@@ -1,46 +1,72 @@
 import Link from 'next/link'
-import { Card, CardContent, CardHeader } from '@/components/ui/card'
+import Image from 'next/image'
+import { Calendar } from 'lucide-react'
+import { Card, CardContent, CardFooter, CardHeader } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
+import { urlFor } from '@/sanity/lib/image'
+import { Post } from '@/types/sanity'
 
-export interface ArticleCardProps {
-  title: string
-  excerpt: string
-  slug: string
-  category: string
-  publishedAt: string
-  imageUrl?: string
+interface ArticleCardProps {
+  post: Post
 }
 
-export function ArticleCard({
-  title,
-  excerpt,
-  slug,
-  category,
-  publishedAt,
-}: ArticleCardProps) {
+export function ArticleCard({ post }: ArticleCardProps) {
+  const { title, excerpt, slug, mainImage, publishedAt, categories } = post
+  const category = categories?.[0]
+
   return (
-    <Link href={`/journal/${slug}`}>
-      <Card className="group h-full overflow-hidden transition-all hover:shadow-lg">
-        {/* Image Placeholder */}
-        <div className="aspect-[16/10] w-full bg-gradient-to-br from-primary/10 via-secondary to-accent/10" />
-        
-        <CardHeader className="pb-3">
-          <div className="flex items-center justify-between gap-2">
-            <Badge variant="secondary" className="text-xs">
-              {category}
-            </Badge>
-            <time className="text-xs text-muted-foreground">{publishedAt}</time>
+    <Link href={`/journal/${slug.current}`} className="group block h-full">
+      <Card className="flex h-full flex-col overflow-hidden transition-all duration-300 hover:shadow-lg">
+        {/* Image */}
+        <div className="relative aspect-[16/9] overflow-hidden bg-muted">
+          {mainImage ? (
+            <Image
+              src={urlFor(mainImage).url()}
+              alt={title}
+              fill
+              className="object-cover transition-transform duration-500 group-hover:scale-105"
+            />
+          ) : (
+            <div className="flex h-full items-center justify-center bg-secondary text-muted-foreground">
+              <span className="text-sm">No Image</span>
+            </div>
+          )}
+        </div>
+
+        <CardHeader className="flex-1 space-y-2 p-5">
+          <div className="flex items-center justify-between">
+            {category && (
+              <Badge variant="secondary" className="font-medium">
+                {category.title}
+              </Badge>
+            )}
+            {publishedAt && (
+              <div className="flex items-center text-xs text-muted-foreground">
+                <Calendar className="mr-1 size-3" />
+                {new Date(publishedAt).toLocaleDateString('en-US', {
+                  month: 'short',
+                  day: 'numeric',
+                  year: 'numeric',
+                })}
+              </div>
+            )}
           </div>
-        </CardHeader>
-        
-        <CardContent className="pt-0">
-          <h3 className="mb-2 line-clamp-2 text-lg font-semibold transition-colors group-hover:text-primary">
+          <h3 className="line-clamp-2 text-xl font-bold leading-tight tracking-tight group-hover:text-primary">
             {title}
           </h3>
-          <p className="line-clamp-2 text-sm text-muted-foreground">
+        </CardHeader>
+
+        <CardContent className="p-5 pt-0">
+          <p className="line-clamp-3 text-sm leading-relaxed text-muted-foreground">
             {excerpt}
           </p>
         </CardContent>
+
+        <CardFooter className="p-5 pt-0">
+          <span className="text-sm font-medium text-primary underline-offset-4 group-hover:underline">
+            Read Article &rarr;
+          </span>
+        </CardFooter>
       </Card>
     </Link>
   )
